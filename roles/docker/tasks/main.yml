@@ -1,26 +1,29 @@
 ---
-- name: Build Docker images from Dockerfiles.
-  docker_image:
-    name: "{{ item.name }}"
-    tag: "{{ item.tag }}"
-    path: "/vagrant/containers/{{ item.directory }}"
-    state: build
-  with_items:
-    - { name: data, tag: "data", directory: data }
-    - { name: db, tag: mysql, directory: db }
-
-# Data containers don't need to be running to be utilized.
-- name: Run a Data container.
+- name: Redis data container
   docker:
-    image: data:data
-    name: data
+    name: data/redis
+    image: busybox
     state: present
+    volumes:
+      - /data
 
-- name: Run a MySQL container.
+
+- name: Redis container
   docker:
-    image: db:mysql
-    name: db
+    image: redis
+    name: redis
     state: running
-    volumes_from: data
-    command: /opt/start-mysql.sh
-    ports: "3306:3306"
+    volumes_from: data/redis
+    command: redis-server --appendonly yes
+
+
+- name: Node container
+  docker:
+    name: node
+    image: node:0.12.4
+    state: reloaded
+    pull: always
+    links:
+    - "redis:redisbootstrap"
+    ports:
+    - "8080:9000"
